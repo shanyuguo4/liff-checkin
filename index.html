@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>LIFF 打卡</title>
+  <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+  <style>
+    body {
+      height: 100vh;
+      margin: 0;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      background: #f8f8f8;
+    }
+    #btnCheckIn {
+      background-color: #27ae60;
+      color: #fff;
+      border: none;
+      padding: 20px 60px;
+      font-size: 2rem;
+      border-radius: 8px;
+      cursor: pointer;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      transition: background 0.2s;
+    }
+    #btnCheckIn:hover {
+      background-color: #219150;
+    }
+    h1 {
+      margin-bottom: 40px;
+      color: #333;
+      font-weight: 500;
+    }
+  </style>
+</head>
+<body>
+  <h1>歡迎使用 LIFF 打卡</h1>
+  <button id="btnCheckIn" disabled>載入中...</button>
+
+  <script>
+    const targetLat = 22.6179944;
+    const targetLng = 120.3127821;
+    const allowedRadius = 100; // 公尺
+
+    function getDistanceFromLatLonInM(lat1, lon1, lat2, lon2) {
+      const R = 6371000;
+      const dLat = (lat2 - lat1) * Math.PI / 180;
+      const dLon = (lon2 - lon1) * Math.PI / 180;
+      const a =
+        Math.sin(dLat/2) * Math.sin(dLat/2) +
+        Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+        Math.sin(dLon/2) * Math.sin(dLon/2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      return R * c;
+    }
+
+    async function main() {
+      try {
+        await liff.init({ liffId: "2007483202-omkgVLwe" }); // 替換成你的 LIFF ID
+        alert('LIFF 初始化成功');
+        // 初始化成功後啟用按鈕並綁定事件
+        const btn = document.getElementById('btnCheckIn');
+        btn.disabled = false;
+        btn.textContent = '我要打打打打打打卡';
+        btn.addEventListener('click', onCheckIn);
+      } catch (e) {
+        alert('LIFF 初始化失敗: ' + e.message);
+      }
+    }
+
+    async function onCheckIn() {
+      alert('按鈕被點擊');
+      try {
+        if (!liff.isLoggedIn()) {
+          liff.login();
+          return;
+        }
+
+        const profile = await liff.getProfile();
+        alert('取得用戶資料成功，暱稱：' + profile.displayName);
+
+        if (!navigator.geolocation) {
+          alert('瀏覽器不支援定位功能');
+          return;
+        }
+
+        navigator.geolocation.getCurrentPosition(async (pos) => {
+          alert(`定位成功：${pos.coords.latitude}, ${pos.coords.longitude}`);
+
+          const userLat = pos.coords.latitude;
+          const userLng = pos.coords.longitude;
+          const distance = getDistanceFromLatLonInM(userLat, userLng, targetLat, targetLng);
+          alert(`距離為：${distance.toFixed(2)} 公尺`);
+
+          if (distance > allowedRadius) {
+            alert('您不在指定打卡範圍內，無法打卡');
+            return;
+          }
+
+          const data = {
+            nickname: profile.displayName,
+            lineId: profile.userId,
+            checkInTime: new Date().toISOString(),
+            latitude: userLat,
+            longitude: userLng
+          };
+
+          alert('即將送出資料到後端');
+
+          const res = await fetch('https://script.google.com/macros/s/AKfycbws96Zz7Oy4IfbOAJzOBUmuJ1RHLSXIS_NJw3R3Wz2VZ-Zk99pNUfrBVkjSiFoxUUwA/exec', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+          });
+
+          const result = await res.json();
+          alert('後端回應狀態：' + result.status);
+
+          if (result.status === 'success') {
+            alert('打卡成功！');
+          } else {
+            alert('打卡失敗，請稍後再試');
+          }
+        }, (err) => {
+          alert('無法取得定位：' + err.message);
+        }, { enableHighAccuracy: true });
+
+      } catch (error) {
+        alert('發生錯誤：' + error.message);
+      }
+    }
+
+    main();
+  </script>
+</body>
+</html>
