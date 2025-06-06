@@ -12,6 +12,7 @@
       justify-content: center;
       align-items: center;
       background: #f8f8f8;
+      font-family: Arial, sans-serif;
     }
     #btnCheckIn {
       background-color: #27ae60;
@@ -39,9 +40,9 @@
   <button id="btnCheckIn" disabled>載入中...</button>
 
   <script>
-    const targetLat = 22.6179944;
-    const targetLng = 120.3127821;
-    const allowedRadius = 100; // 公尺
+    const targetLat = 22.6179944;  // 你的打卡點緯度
+    const targetLng = 120.3127821; // 你的打卡點經度
+    const allowedRadius = 100;     // 允許打卡距離（公尺）
 
     function getDistanceFromLatLonInM(lat1, lon1, lat2, lon2) {
       const R = 6371000;
@@ -59,10 +60,9 @@
       try {
         await liff.init({ liffId: "2007483202-omkgVLwe" }); // 替換成你的 LIFF ID
         alert('LIFF 初始化成功');
-        // 初始化成功後啟用按鈕並綁定事件
         const btn = document.getElementById('btnCheckIn');
         btn.disabled = false;
-        btn.textContent = '我要打打打打打打卡';
+        btn.textContent = '我要打卡';
         btn.addEventListener('click', onCheckIn);
       } catch (e) {
         alert('LIFF 初始化失敗: ' + e.message);
@@ -108,7 +108,7 @@
 
           alert('即將送出資料到後端');
 
-          const res = await fetch('https://script.google.com/macros/s/AKfycbws96Zz7Oy4IfbOAJzOBUmuJ1RHLSXIS_NJw3R3Wz2VZ-Zk99pNUfrBVkjSiFoxUUwA/exec', {
+          const res = await fetch('https://script.google.com/macros/s/AKfycbyZ7stT_Nb7PVxLai2qy6LxYe2d3WSAIL3e14Q5jl--JEpkhg6tg_HxhFl1byXJvupD/exec', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(data)
