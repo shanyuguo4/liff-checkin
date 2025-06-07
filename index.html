@@ -2,7 +2,7 @@
 <html lang="zh-Hant">
 <head>
   <meta charset="UTF-8">
-  <title>打卡小幫手</title>
+  <title>打卡頁面</title>
   <!-- 禁用快取 -->
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"/>
   <meta http-equiv="Pragma" content="no-cache"/>
@@ -39,7 +39,7 @@
       border-radius: 8px;
       background: #28a745;
       color: #fff;
-      font-size: 3rem;     /* 已更新為 3rem */
+      font-size: 3rem;     /* 自行更改按鈕字體大小 */
       cursor: pointer;
     }
     /* 中心顯示的提示視窗 */
@@ -53,8 +53,8 @@
       padding: 1.2em 2em;
       border-radius: 6px;
       display: none;
-      font-size: 3rem;   /* 若也要更大，可自行調整此處 */
-      line-height: 1.6;
+      font-size: 3rem;     /* 提示文字大小 */
+      line-height: 1.4;
       text-align: center;
       white-space: pre-wrap;
       max-width: 90%;
@@ -67,21 +67,20 @@
   <div id="message"></div>
 
   <script>
+    // ===== 常數設定 =====
+    const LIFF_ID        = '2007483202-omkgVLwe';
+    const WEB_APP_URL    = 'https://script.google.com/macros/s/AKfycbya4XVqzSyPwC8fgW2JhW7zSHL3YN2JFnp1HvBIf9QqmmcbDvl1YF2Mwjm7SWmpHr8B/exec';
+    const TARGET         = { lat: 22.61797, lng: 120.31295 };
+    const MAX_DISTANCE_M = 100;  // 100 公尺
+
     // ===== LIFF 初始化 =====
-    const LIFF_ID = '2007483202-omkgVLwe';
     let liffProfile = null;
     liff.init({ liffId: LIFF_ID })
       .then(() => liff.getProfile())
       .then(p => { liffProfile = p; })
       .catch(err => console.error('LIFF 初始化失敗：', err));
 
-    // ===== 目標座標 & Web App URL =====
-    const TARGET = { lat: 22.61797, lng: 120.31295 };  // 更新後的經緯度
-    const MAX_DISTANCE_M = 50;
-    const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbya4XVqzSyPwC8fgW2JhW7zSHL3YN2JFnp1HvBIf9QqmmcbDvl1YF2Mwjm7SWmpHr8B/exec';  
-    // ← 請替換為您最新的 Deployment ID
-
-    // ===== Haversine 距離計算 =====
+    // ===== 距離計算（Haversine） =====
     function getDistance(lat1, lon1, lat2, lon2) {
       const toRad = d => d * Math.PI / 180;
       const R = 6371000;
@@ -100,8 +99,9 @@
       setTimeout(() => m.style.display = 'none', duration);
     }
 
-    // ===== 傳送打卡資料到 Google Sheets =====
+    // ===== 傳送到 Google Sheets =====
     async function sendToSheet(payload) {
+      console.log('準備送出 payload:', payload);
       try {
         const res = await fetch(WEB_APP_URL, {
           method: 'POST',
@@ -110,9 +110,9 @@
           body: JSON.stringify(payload)
         });
         const text = await res.text();
+        console.log('GS 回傳狀態：', res.status, '內容：', text);
         if (!res.ok) {
-          console.error('GS 回傳狀態：', res.status, text);
-          return { ok: false, msg: text };
+          return { ok: false, msg: `狀態 ${res.status}: ${text}` };
         }
         return { ok: true, msg: text };
       } catch (e) {
@@ -121,7 +121,7 @@
       }
     }
 
-    // ===== 按鈕點擊事件 =====
+    // ===== 點擊事件 =====
     document.getElementById('checkInBtn').addEventListener('click', () => {
       if (!navigator.geolocation) {
         return showMessage('此裝置不支援定位功能');
@@ -132,9 +132,9 @@
         const dist = getDistance(lat, lng, TARGET.lat, TARGET.lng);
         const time = new Date().toISOString();
         const nick = liffProfile?.displayName || '未知';
-        const lineId = liffProfile?.userId || '未知';
+        const lineId = liffProfile?.userId     || '未知';
 
-        // 第一步：顯示經緯度 + 成功/失敗
+        // 1. 顯示經緯度 + 成功/失敗
         if (dist <= MAX_DISTANCE_M) {
           showMessage(
             `經度: ${lng.toFixed(6)}\n` +
@@ -149,7 +149,7 @@
           );
         }
 
-        // 第二步：3 秒後顯示寫入 GS 結果
+        // 2. 3 秒後再顯示寫入 GS 結果
         setTimeout(async () => {
           const result = await sendToSheet({
             nickname: nick,
