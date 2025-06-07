@@ -3,10 +3,26 @@
 <head>
   <meta charset="UTF-8">
   <title>打卡頁面</title>
+  <!-- 禁用快取 -->
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"/>
+  <meta http-equiv="Pragma" content="no-cache"/>
+  <meta http-equiv="Expires" content="0"/>
+
+  <!-- 快取破壞：首次載入自動加入 timestamp 參數 -->
+  <script>
+    (function bustCache() {
+      const url = new URL(window.location.href);
+      if (!url.searchParams.has('t')) {
+        url.searchParams.set('t', Date.now());
+        window.location.replace(url.toString());
+      }
+    })();
+  </script>
+
   <!-- 載入 LIFF SDK -->
   <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+
   <style>
-    /* 全頁置中 */
     body {
       margin: 0;
       height: 100vh;
@@ -16,7 +32,6 @@
       background: #f0f0f0;
       font-family: sans-serif;
     }
-    /* 打卡按鈕 */
     #checkInBtn {
       padding: 1em 2em;
       border: none;
@@ -26,7 +41,6 @@
       font-size: 1.2rem;
       cursor: pointer;
     }
-    /* 訊息顯示區 */
     #message {
       position: absolute;
       top: 1em;
@@ -41,49 +55,44 @@
   </style>
 </head>
 <body>
-
   <button id="checkInBtn">我要打卡</button>
   <div id="message"></div>
 
   <script>
-    // ====== 1. LIFF 初始化 ======
-    const LIFF_ID = '2007483202-omkgVLwe';  // <- 換成你的 LIFF ID
+    // ===== LIFF 初始化 =====
+    const LIFF_ID = '2007483202-omkgVLwe';
     let liffProfile = null;
 
     liff.init({ liffId: LIFF_ID })
       .then(() => liff.getProfile())
-      .then(profile => {
-        liffProfile = profile;  // { displayName, userId, pictureUrl, ... }
-      })
+      .then(p => { liffProfile = p; })
       .catch(err => console.error('LIFF 初始化失敗：', err));
 
-    // ====== 2. 目標座標 & Web App URL ======
-    const TARGET = { lat: 22.6179944, lng: 120.3127821 };  // <- 換成你的指定緯經度
-    const MAX_DISTANCE_M = 50;  // 公尺
-    const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycby3cFvlOM7PmME2FauXaXG2IuIYOSQS69tDcYYsRByNE-avIaEGiJxLwmhYDVdjoVTV/exec';  // <- 換成你的 Web App URL
+    // ===== 目標座標 & Web App URL =====
+    const TARGET = { lat: 25.0330, lng: 121.5654 };
+    const MAX_DISTANCE_M = 50;
+    const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycby3cFvlOM7PmME2FauXaXG2IuIYOSQS69tDcYYsRByNE-avIaEGiJxLwmhYDVdjoVTV/exec';
 
-    // ====== 3. 計算兩點距離（Haversine） ======
+    // ===== Haversine 距離計算 =====
     function getDistance(lat1, lon1, lat2, lon2) {
-      const toRad = deg => deg * Math.PI / 180;
-      const R = 6371000; // 地球半徑 (m)
-      const dLat = toRad(lat2 - lat1);
-      const dLon = toRad(lon2 - lon1);
+      const toRad = d => d * Math.PI / 180;
+      const R = 6371000;
+      const dLat = toRad(lat2 - lat1), dLon = toRad(lon2 - lon1);
       const a = Math.sin(dLat/2)**2
               + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2))
               * Math.sin(dLon/2)**2;
-      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-      return R * c;
+      return 2 * R * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     }
 
-    // ====== 4. 顯示訊息 ======
+    // ===== 顯示訊息 =====
     function showMessage(text) {
-      const msg = document.getElementById('message');
-      msg.textContent = text;
-      msg.style.display = 'block';
-      setTimeout(() => msg.style.display = 'none', 5000);
+      const m = document.getElementById('message');
+      m.textContent = text;
+      m.style.display = 'block';
+      setTimeout(() => m.style.display = 'none', 5000);
     }
 
-    // ====== 5. 傳送打卡資料到 Google Sheets ======
+    // ===== 傳送打卡資料到 Google Sheets =====
     async function sendToSheet(payload) {
       try {
         const res = await fetch(WEB_APP_URL, {
@@ -92,13 +101,13 @@
           body: JSON.stringify(payload)
         });
         return res.ok;
-      } catch (err) {
-        console.error('傳送失敗：', err);
+      } catch (e) {
+        console.error('傳送失敗：', e);
         return false;
       }
     }
 
-    // ====== 6. 點擊按鈕事件 ======
+    // ===== 按鈕點擊事件 =====
     document.getElementById('checkInBtn').addEventListener('click', () => {
       if (!navigator.geolocation) {
         return showMessage('此裝置不支援定位功能');
@@ -113,10 +122,10 @@
         const lineId = liffProfile?.userId || '未知';
 
         if (dist <= MAX_DISTANCE_M) {
-          showMessage(`經度: ${lng.toFixed(6)}，緯度: ${lat.toFixed(6)} ；打卡成功！`);
+          showMessage(`經度: ${lng.toFixed(6)}，緯度: ${lat.toFixed(6)}；打卡成功！`);
           await sendToSheet({ nickname: nick, lineId, timestamp: time, latitude: lat, longitude: lng });
         } else {
-          showMessage(`經度: ${lng.toFixed(6)}，緯度: ${lat.toFixed(6)} ；打卡失敗，你距離指定地點太遠 (${Math.round(dist)}m)`);
+          showMessage(`經度: ${lng.toFixed(6)}，緯度: ${lat.toFixed(6)}；打卡失敗，你距離指定地點太遠 (${Math.round(dist)}m)`);
         }
       }, err => {
         showMessage('取得定位失敗，請確認已允許定位權限');
@@ -124,6 +133,5 @@
       }, { enableHighAccuracy: true, timeout: 10000 });
     });
   </script>
-
 </body>
 </html>
