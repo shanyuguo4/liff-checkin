@@ -2,7 +2,7 @@
 <html lang="zh-Hant">
 <head>
   <meta charset="UTF-8">
-  <title>打卡小幫手</title>
+  <title>打卡頁面</title>
   <!-- 禁用快取 -->
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"/>
   <meta http-equiv="Pragma" content="no-cache"/>
@@ -39,7 +39,7 @@
       border-radius: 8px;
       background: #28a745;
       color: #fff;
-      font-size: 3rem;     /* 這裡可自行調整字體大小 */
+      font-size: 1.8rem;     /* 自行調整按鈕字體大小 */
       cursor: pointer;
     }
     /* 中心顯示的提示視窗 */
@@ -53,7 +53,7 @@
       padding: 1.2em 2em;
       border-radius: 6px;
       display: none;
-      font-size: 3rem;     /* 調整提示文字大小 */
+      font-size: 1.4rem;     /* 自行調整提示文字大小 */
       line-height: 1.6;
       text-align: center;
       white-space: pre-wrap;
@@ -76,7 +76,7 @@
       .catch(err => console.error('LIFF 初始化失敗：', err));
 
     // ===== 目標座標 & Web App URL =====
-    const TARGET = { lat: 22.61797, lng: 120.31295 };
+    const TARGET = { lat: 22.61797, lng: 120.31295 };  // 更新後的經緯度
     const MAX_DISTANCE_M = 50;
     const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbya4XVqzSyPwC8fgW2JhW7zSHL3YN2JFnp1HvBIf9QqmmcbDvl1YF2Mwjm7SWmpHr8B/exec';
 
@@ -86,17 +86,17 @@
       const R = 6371000;
       const dLat = toRad(lat2 - lat1), dLon = toRad(lon2 - lon1);
       const a = Math.sin(dLat/2)**2
-              + Math.cos(toRad(lat1))*Math.cos(toRad(lat2))
+              + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2))
               * Math.sin(dLon/2)**2;
       return 2 * R * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     }
 
     // ===== 顯示提示視窗 =====
-    function showMessage(html) {
+    function showMessage(html, duration = 3000) {
       const m = document.getElementById('message');
       m.innerHTML = html;
       m.style.display = 'block';
-      setTimeout(() => m.style.display = 'none', 5000);
+      setTimeout(() => m.style.display = 'none', duration);
     }
 
     // ===== 傳送打卡資料到 Google Sheets =====
@@ -104,18 +104,19 @@
       try {
         const res = await fetch(WEB_APP_URL, {
           method: 'POST',
-          cache: 'no-store',                // 避免快取
+          cache: 'no-store',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload)
         });
+        const text = await res.text();
         if (!res.ok) {
-          console.error('GS 回傳狀態：', res.status);
-          return false;
+          console.error('GS 回傳狀態：', res.status, text);
+          return { ok: false, msg: text };
         }
-        return true;
+        return { ok: true, msg: text };
       } catch (e) {
         console.error('傳送失敗：', e);
-        return false;
+        return { ok: false, msg: e.message };
       }
     }
 
@@ -132,28 +133,40 @@
         const nick = liffProfile?.displayName || '未知';
         const lineId = liffProfile?.userId || '未知';
 
+        // 第一步：顯示經緯度 + 成功/失敗
         if (dist <= MAX_DISTANCE_M) {
-          // 範圍內：先顯示成功，再嘗試寫入 GS
           showMessage(
             `經度: ${lng.toFixed(6)}\n` +
             `緯度: ${lat.toFixed(6)}\n\n` +
             `✅ 打卡成功！`
           );
-          const ok = await sendToSheet({ nickname: nick, lineId, timestamp: time, latitude: lat, longitude: lng });
-          if (!ok) {
-            showMessage(
-              `✅ 打卡成功！\n` +
-              `但無法寫入 GS，請聯絡管理員`
-            );
-          }
         } else {
-          // 超出範圍：顯示失敗
           showMessage(
             `經度: ${lng.toFixed(6)}\n` +
             `緯度: ${lat.toFixed(6)}\n\n` +
             `❌ 打卡失敗！距離太遠 (${Math.round(dist)}m)`
           );
         }
+
+        // 等待第一個提示視窗消失後，再發送並顯示寫入 GS 結果
+        setTimeout(async () => {
+          const result = await sendToSheet({
+            nickname: nick,
+            lineId,
+            timestamp: time,
+            latitude: lat,
+            longitude: lng
+          });
+          if (result.ok) {
+            showMessage('✅ 已成功寫入 Google Sheets');
+          } else {
+            showMessage(
+              `⚠️ 寫入 Google Sheets 失敗\n` +
+              `${result.msg}`
+            );
+          }
+        }, 3000);
+
       }, err => {
         showMessage('📍 取得定位失敗，請確認已允許定位權限');
         console.error(err);
