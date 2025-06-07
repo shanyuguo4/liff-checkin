@@ -2,7 +2,7 @@
 <html lang="zh-Hant">
 <head>
   <meta charset="UTF-8">
-  <title>打卡頁面</title>
+  <title>打卡小幫手</title>
   <!-- 禁用快取 -->
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"/>
   <meta http-equiv="Pragma" content="no-cache"/>
@@ -32,14 +32,14 @@
       background: #f0f0f0;
       font-family: sans-serif;
     }
-    /* 放大打卡按鈕 */
+    /* 放大打卡按鈕字體 */
     #checkInBtn {
       padding: 1.5em 3em;
       border: none;
       border-radius: 8px;
       background: #28a745;
       color: #fff;
-      font-size: 3rem;     /* 自行調整按鈕字體大小 */
+      font-size: 3rem;     /* 已更新為 3rem */
       cursor: pointer;
     }
     /* 中心顯示的提示視窗 */
@@ -53,7 +53,7 @@
       padding: 1.2em 2em;
       border-radius: 6px;
       display: none;
-      font-size: 3rem;     /* 自行調整提示文字大小 */
+      font-size: 3rem;   /* 若也要更大，可自行調整此處 */
       line-height: 1.6;
       text-align: center;
       white-space: pre-wrap;
@@ -78,7 +78,8 @@
     // ===== 目標座標 & Web App URL =====
     const TARGET = { lat: 22.61797, lng: 120.31295 };  // 更新後的經緯度
     const MAX_DISTANCE_M = 50;
-    const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbya4XVqzSyPwC8fgW2JhW7zSHL3YN2JFnp1HvBIf9QqmmcbDvl1YF2Mwjm7SWmpHr8B/exec';
+    const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbya4XVqzSyPwC8fgW2JhW7zSHL3YN2JFnp1HvBIf9QqmmcbDvl1YF2Mwjm7SWmpHr8B/exec';  
+    // ← 請替換為您最新的 Deployment ID
 
     // ===== Haversine 距離計算 =====
     function getDistance(lat1, lon1, lat2, lon2) {
@@ -86,7 +87,7 @@
       const R = 6371000;
       const dLat = toRad(lat2 - lat1), dLon = toRad(lon2 - lon1);
       const a = Math.sin(dLat/2)**2
-              + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2))
+              + Math.cos(toRad(lat1))*Math.cos(toRad(lat2))
               * Math.sin(dLon/2)**2;
       return 2 * R * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     }
@@ -148,7 +149,7 @@
           );
         }
 
-        // 等待第一個提示視窗消失後，再發送並顯示寫入 GS 結果
+        // 第二步：3 秒後顯示寫入 GS 結果
         setTimeout(async () => {
           const result = await sendToSheet({
             nickname: nick,
