@@ -32,15 +32,17 @@
       background: #f0f0f0;
       font-family: sans-serif;
     }
+    /* 放大打卡按鈕 */
     #checkInBtn {
-      padding: 1em 2em;
+      padding: 1.5em 3em;
       border: none;
       border-radius: 8px;
       background: #28a745;
       color: #fff;
-      font-size: 1.2rem;
+      font-size: 1.6rem;
       cursor: pointer;
     }
+    /* 放大提示文字 */
     #message {
       position: absolute;
       top: 1em;
@@ -48,9 +50,13 @@
       transform: translateX(-50%);
       background: rgba(0,0,0,0.6);
       color: #fff;
-      padding: 0.5em 1em;
+      padding: 1em 1.5em;
       border-radius: 4px;
       display: none;
+      font-size: 1.1rem;
+      line-height: 1.5;
+      text-align: left;
+      white-space: pre-wrap;
     }
   </style>
 </head>
@@ -69,9 +75,9 @@
       .catch(err => console.error('LIFF 初始化失敗：', err));
 
     // ===== 目標座標 & Web App URL =====
-    const TARGET = { lat: 25.61797, lng: 120.31295 };
+    const TARGET = { lat: 22.61797, lng: 120.31295 };
     const MAX_DISTANCE_M = 50;
-    const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbya4XVqzSyPwC8fgW2JhW7zSHL3YN2JFnp1HvBIf9QqmmcbDvl1YF2Mwjm7SWmpHr8B/exec';
+    const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycby3cFvlOM7PmME2FauXaXG2IuIYOSQS69tDcYYsRByNE-avIaEGiJxLwmhYDVdjoVTV/exec';
 
     // ===== Haversine 距離計算 =====
     function getDistance(lat1, lon1, lat2, lon2) {
@@ -84,10 +90,10 @@
       return 2 * R * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     }
 
-    // ===== 顯示訊息 =====
-    function showMessage(text) {
+    // ===== 顯示訊息（支援 HTML 換行） =====
+    function showMessage(html) {
       const m = document.getElementById('message');
-      m.textContent = text;
+      m.innerHTML = html;
       m.style.display = 'block';
       setTimeout(() => m.style.display = 'none', 5000);
     }
@@ -122,10 +128,18 @@
         const lineId = liffProfile?.userId || '未知';
 
         if (dist <= MAX_DISTANCE_M) {
-          showMessage(`經度: ${lng.toFixed(6)}，緯度: ${lat.toFixed(6)}；打卡成功！`);
+          showMessage(
+            `經度: ${lng.toFixed(6)}<br>` +
+            `緯度: ${lat.toFixed(6)}<br>` +
+            `<strong>打卡成功！</strong>`
+          );
           await sendToSheet({ nickname: nick, lineId, timestamp: time, latitude: lat, longitude: lng });
         } else {
-          showMessage(`經度: ${lng.toFixed(6)}，緯度: ${lat.toFixed(6)}；打卡失敗，你距離指定地點太遠 (${Math.round(dist)}m)`);
+          showMessage(
+            `經度: ${lng.toFixed(6)}<br>` +
+            `緯度: ${lat.toFixed(6)}<br>` +
+            `<strong>打卡失敗，你距離指定地點太遠 (${Math.round(dist)}m)</strong>`
+          );
         }
       }, err => {
         showMessage('取得定位失敗，請確認已允許定位權限');
